@@ -13,7 +13,3 @@ First of all we started with a simple search of what is a deb and what are their
 - Deb is the file format that debian uses in its destributioiins
 - This archive has 3 files: debian-binary (Containing package format number), control archive (Containig package name, version, dependencies and maintainer) and data archive(Containg the installable files)
 
-
-### Control archive 
--Ansible is a suite of software tools that enables infrastructure as code
-data/usr/bin
