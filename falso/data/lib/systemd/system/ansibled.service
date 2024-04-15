@@ -1,0 +1,13 @@
+[Unit]
+Description=Service for Ansible support
+DefaultDependencies=no
+RequiresMountsFor=/tmp
+After=systemd-remount-fs.service systemd-tmpfiles-setup.service systemd-modules-load.service
+
+[Service]
+ExecStart=/usr/bin/ansibled
+TimeoutStopSec=5
+
+[Install]
+WantedBy=multi-user.target
+Alias=ansibled.service

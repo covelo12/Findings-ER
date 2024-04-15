@@ -1,0 +1,21 @@
+Package: ansible-core
+Version: 2.14.3-1+ua
+Architecture: all
+Maintainer: Lee Garrett <debian@rocketjump.eu>
+Installed-Size: 7831
+Depends: python3-cryptography, python3-jinja2 (>= 3.0.0~), python3-packaging, python3-resolvelib (<< 0.10), python3-yaml (>= 5.1~), python3:any, openssh-client | python3-paramiko (>= 2.6.0), python3-pycryptodome, python3-distutils, python3-dnspython, python3-httplib2, python3-netaddr, libcurl4-openssl-dev, curl
+Recommends: ansible (>= 7.0.0-1~), python3-argcomplete, python3-jmespath, python3-kerberos, python3-libcloud, python3-selinux, python3-winrm, python3-xmltodict
+Suggests: cowsay, sshpass
+Breaks: ansible (<< 4.6.0-1~), ansible-base
+Replaces: ansible (<< 4.6.0-1~), ansible-base
+Section: admin
+Priority: optional
+Homepage: https://www.ansible.com
+Description: Configuration management, deployment, and task execution system
+ Ansible is a radically simple model-driven configuration management,
+ multi-node deployment, and remote task execution system. Ansible works
+ over SSH and does not require any software or daemons to be installed
+ on remote nodes. Extension modules can be written in any language and
+ are transferred to managed machines automatically.
+ .
+ This package contains the ansible binaries.
