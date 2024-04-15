@@ -1,5 +1,5 @@
 Package: ansible-core
-Version: 2.14.3-1+ua
+Version: 2.14.3-1
 Architecture: all
 Maintainer: Lee Garrett <debian@rocketjump.eu>
 Installed-Size: 7831
