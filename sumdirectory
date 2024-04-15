@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Function to validate the input directory
+validate_dir() {
+  if [[ ! -d "$1" ]]; then
+    echo "Error: '$1' is not a directory."
+    exit 1
+  fi
+}
+
+# Get the directory name from the argument (assuming first argument)
+directory="$1"
+
+# Validate the directory
+validate_dir "$directory"
+
+# Calculate and display the MD5 sum of all files
+LC_ALL=C find "$directory" -type f -exec md5sum {} \; | sort | md5sum
+
+echo "The command has completed."
+
