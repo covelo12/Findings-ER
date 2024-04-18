@@ -20,18 +20,18 @@ As we checked there was too many files a shell script was made (with the help of
 Control is a file that contains the dependencies needed, seeing that the md5 didn't match the original one  we checked this file which contained two added depedencies:
 - libcurl4-openssl-dev 
 - curl
-![S](image.png)
+![S](img/image.png)
 
 This may suggest that the malware needs to comunicate with an external server to **extravigate information** or **download extra code** from one.
 
 ### Data
 The false deb has an extra lib folder that is suspicious, besides that, the usr folder has a folder where the hashes don't match with the original one.
-![](image-1.png)
+![](img/image-1.png)
 That folder has an extra file named **ansibled**
 
 
 #### Ansibled
 ##### Strings
 Running the strings command can  give us some useful information, like this:
-![alt text](image-2.png)
+![alt text](img/image-2.png)
 We can see this file is triying to connect to some socket and using the extra libraries mentioned before
