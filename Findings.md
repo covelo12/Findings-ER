@@ -33,7 +33,9 @@ That folder has an extra file named **ansibled**
 ### Ansibled
 #### Strings
 Running the strings command can  give us some useful information, like this:
+
 ![alt text](img/image-2.png)
+
 We can see this file is triying to connect to some socket and using the extra libraries mentioned before
 ####  File analysis with ghidra
 ##### "XorManhoso"
