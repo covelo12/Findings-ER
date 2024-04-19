@@ -49,7 +49,7 @@ On memory address `00101b37`is a function that will be the handler of a signal.
 This function points to two others
 ##### FUN_00101758
 At `00101758` this function decodes two strings
--  From `"m6/2m%7+&\'l2&$` to `/tmp/guid?e.pdf`
+-  From `"m6/2m%7+&\'l2&$` to `/tmp/guide.pdf`
 -  From `*662xmms{plstzlstrlsvqm%7+&\'l2&$` to `http://192.168.160.143/guid?e.pdf`
 
 Next the code 
@@ -81,3 +81,5 @@ We curled the pdf to see what it was and got a "500 comandos de Linux explicados
 ![alt text](img/Hash2.png)
 It didn't match
 
+- Online size:   1527251
+-  We curled size:  1592968
