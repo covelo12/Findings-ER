@@ -43,6 +43,8 @@ Is a function started at `001016da` that tranforms the string  into a sequence o
 Example of the first time appearing:
 String: `"y\";&y78%?4:32x:95="`
 Res: `2a 0f 71 68 75 2a 64 6b 76 6c 67 69 60 61 2b 69 6a 66 6e`
+#### Threads
+The main function executes a thread that is always listening and waits for a connection to be made to a port a reads it and saves it on a variable.
 #### Singal handler
 On memory address `00101b37`is a function that will be the handler of a signal.
 ![Signal handler](img/SignalHandler.png)
@@ -83,3 +85,6 @@ It didn't match
 
 - Online size:   1527251
 -  We curled size:  1592968
+
+##### FUN_00101a07
+This is the second function of the handler and will help us tell what is done with the file.
