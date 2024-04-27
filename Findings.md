@@ -38,11 +38,9 @@ Running the strings command can  give us some useful information, like this:
 
 We can see this file is triying to connect to some socket and using the extra libraries mentioned before
 ####  File analysis with ghidra
-##### "XorManhoso"
-Is a function started at `001016da` that tranforms the string  into a sequence of bytes  and stores in the char array given.
-Example of the first time appearing:
-String: `"y\";&y78%?4:32x:95="`
-Res: `2a 0f 71 68 75 2a 64 6b 76 6c 67 69 60 61 2b 69 6a 66 6e`
+##### Encript
+Is a function started at `0x001016da` that XOR's a the second argument with the third and stores the result in the first.
+![alt text](img/encript.png)
 #### Threads
 The main function executes a thread that is always listening and waits for a connection to be made to a port a reads it and saves it on a variable.
 #### Singal handler
@@ -86,5 +84,12 @@ It didn't match
 - Online size:   1527251
 -  We curled size:  1592968
 
-##### FUN_00101a07
+##### FUN_00101a07 ->ReadFile
 This is the second function of the handler and will help us tell what is done with the file.
+##### FUN_001019b4-> File decription
+Give an pointer, a size and a byte, it XOR's byte a byte the byte and the next byte in the pointer
+![alt text](img/Filedecription.png)
+##### FUN_00101870->RunSecretCode
+This code works right after the File decription function, after the pdf get decripted this functions copies the pdf to ram with the name found on "0x64656c6269736e61". Then it loads the pdf as a library and looks for the symbol contained on "&DAT_001020d3" that is "RUN". After knowing the adress of that symbol it sends the code to run from there.
+![alt text](/img/RunSecret.png)
+
