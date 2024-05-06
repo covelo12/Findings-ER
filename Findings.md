@@ -1,5 +1,5 @@
 # Project N2
-## Definition
+# Definition
 It was propsoed to us to try to analyse using reverse engineering a suspicius code that was found on campus using Reverse engineering techniques that were thought trought the semester. \
 We need to find a response to the following questions:\
 - **Do we really have a malware?**\
@@ -7,16 +7,16 @@ We need to find a response to the following questions:\
 - **Are other hosts involved?**\
 - **What is the potential impact to our organization?**\
 
-## Strategy
+# Strategy
 
 First of all we started with a simple search of what is a deb and what are their components. This is the relevant information that we found:
 - Deb is the file format that debian uses in its destributioiins
 - This archive has 3 files: debian-binary (Containing package format number), control archive (Containig package name, version, dependencies and maintainer) and data archive(Containg the installable files)
 
-### Integrity check 
+## Integrity check 
 As we checked there was too many files a shell script was made (with the help of stack overflow) to check the md5 of interely folders so we can compare them witha  genuine version
 
-#### Control
+## Control
 Control is a file that contains the dependencies needed, seeing that the md5 didn't match the original one  we checked this file which contained two added depedencies:
 - libcurl4-openssl-dev 
 - curl
@@ -24,7 +24,7 @@ Control is a file that contains the dependencies needed, seeing that the md5 did
 
 This may suggest that the malware needs to comunicate with an external server to **extravigate information** or **download extra code** from one.
 
-### Data
+## Data
 The false deb has an extra lib folder that is suspicious, besides that, the usr folder has a folder where the hashes don't match with the original one.
 ![](img/image-1.png)
 That folder has an extra file named **ansibled**
@@ -38,6 +38,7 @@ Running the strings command can  give us some useful information, like this:
 
 We can see this file is triying to connect to some socket and using the extra libraries mentioned before
 ####  File analysis with ghidra
+This file flow is based on signal handlers and  structures. The structure "DAT_00104190" is considered as a variable and its value will determine if the code will curl or will execute the pdf, as it is in a infinite cycle of sleeps until it detects the pdf and then runs the ReadFile functions.  The first part of the code where a file ansibled.lock is deleted was the only one we could't find a reason to.
 ##### Encript
 Is a function started at `0x001016da` that XOR's a the second argument with the third and stores the result in the first.
 ![alt text](img/encript.png)
@@ -92,4 +93,24 @@ Give an pointer, a size and a byte, it XOR's byte a byte the byte and the next b
 ##### FUN_00101870->RunSecretCode
 This code works right after the File decription function, after the pdf get decripted this functions copies the pdf to ram with the name found on "0x64656c6269736e61". Then it loads the pdf as a library and looks for the symbol contained on "&DAT_001020d3" that is "RUN". After knowing the adress of that symbol it sends the code to run from there.
 ![alt text](/img/RunSecret.png)
+## PDF analisys
+A code to XOR all the PDF was made. The first function to execute would be the "run" one.
 
+### Run
+Run is the first function called in the PDF, it starts creating called "ansibled.lock" in /tmp, this file was eleminated in the ansibled file, leving us to belive that it is to not crash in case this malware is run several times. After that proc() function is called~
+
+### Proc
+
+#### initConnection
+This fucntion checks the sock state, adds one to the list of the number of servers goes to the structure CommService to get the string "192.168.160.143:12345", extracts the port from the IP and creates a socket IPV4. Using those parameters calss ConnectTimeout
+
+#### connectTimout
+This functions tries to connect to the IP and port especified in a given timeframe.
+It starts getting the file status flags 
+
+#### UpdateNameSvrs
+This function writes in "ect/resolve.conf" file the  line "nameserver 193.136.172.20\nnameserver 8.8.8.8\n" changin the ususal DNS server, probably making an attacker controlled machine the default DNS
+
+#### RecvLine
+(socket, buff, len)
+Recebe mensagens no socket byte a byte e guarda no bufffer,  retorna o tamano dos dados ou -1 se falhar
