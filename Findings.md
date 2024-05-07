@@ -1,6 +1,6 @@
 # Project N2
 # Definition
-It was propsoed to us to try to analyse using reverse engineering a suspicius code that was found on campus using Reverse engineering techniques that were thought trought the semester. \
+It was proposed to us to try to analyze using reverse engineering a suspicious code that was found on campus using Reverse engineering techniques that were thought trought the semester. \
 We need to find a response to the following questions:\
 - **Do we really have a malware?**\
 - **How the malware works and why a deb is used?**\
@@ -100,17 +100,68 @@ A code to XOR all the PDF was made. The first function to execute would be the "
 Run is the first function called in the PDF, it starts creating called "ansibled.lock" in /tmp, this file was eleminated in the ansibled file, leving us to belive that it is to not crash in case this malware is run several times. After that proc() function is called~
 
 ### Proc
-
+#### Change Permissions
+On the beginning of the pdf the program changes it's path to `/` and the uid and effective uid to root as seen on the following snippet of code.
+```c
+  chdir("/");
+  setuid(0);
+  seteuid(0);
+```
 #### initConnection
-This fucntion checks the sock state, adds one to the list of the number of servers goes to the structure CommService to get the string "192.168.160.143:12345", extracts the port from the IP and creates a socket IPV4. Using those parameters calss ConnectTimeout
+This function checks the sock state, adds one to the list of the number of servers goes to the structure CommService to get the string "192.168.160.143:12345", extracts the port from the IP and creates a socket IPV4. Using those parameters class ConnectTimeout
 
 #### connectTimout
 This functions tries to connect to the IP and port especified in a given timeframe.
 It starts getting the file status flags 
 
+#### getEndianness
+
+This function always returns "Little".
+
+#### getBuild
+
+This always returns "x86_64"
 #### UpdateNameSvrs
 This function writes in "ect/resolve.conf" file the  line "nameserver 193.136.172.20\nnameserver 8.8.8.8\n" changin the ususal DNS server, probably making an attacker controlled machine the default DNS
 
 #### RecvLine
 (socket, buff, len)
-Recebe mensagens no socket byte a byte e guarda no bufffer,  retorna o tamano dos dados ou -1 se falhar
+Recebe mensagens no socket byte a byte e guarda no buffer,  retorna o tamano dos dados ou -1 se falhar.
+
+#### Telnet Scanner
+
+We are uncertain of what this telnet Scanner, howver we have various assumptions. The 1st is the most obvious and this is scanning for open tenet ports on the network and trying to get its credentials. The second is that it is trying to connect to a available telnet servers on the machine. The last is that it is trying to create a telnet server locally and setting it up to be able to connect later.
+#### ProcessCmd
+ This Functions receives as 1st parameter the length of the cmd and the second parameter is the actual cmd.
+ + TELNET
+	 + ON
+		 This is creating a process to do a Telnet Scanner.
+	 + OFF
+		 Killing the Telnet Scanner
+	 + LOAD
+		 Loading a scanner created it gives 
++ PING
+	 returns as soon as it enters the if.
++ PY
+	+ INSTALL
+		 This is installing a tool called python-paramiko which is a implementation of ssh2 to connect remotely to devices. It also download the file `scan.py` from ``http://192.168.160.143/scan.py`` we tried to see the contents of the file which we weren't able to.
+		 ![alt text](/img/scan.png)
+	+ UPDATING
+		 Removes the file scan.py from the device.
+	+ LOAD
+		 Loads and runs the scan.py with extra parameters just like a random number.
+	Important to notice that all this in the end Do``ClearHistory`` which clears all the commands done trying to hide its actions.
++ HTTP/UDP/TCP/STD
+	 Send a HTTP/UDP/TCP/STD request with certain parameters which we are unable to discover without dynamic analysis.
++ KILL
+	 This kills all processes created
++ UPDATE
+	 Destroys Temporary files like logs and history.
+
+
+##### How it works
+
+The `proc` function initiates by gathering essential system settings before executing the malicious code, utilizing previously defined functions. It manages the execution flow by first waiting for all child processes to terminate and subsequently freeing associated memory. This memory cleanup continues until it stop receiving the 'PING' command. 
+After if the next command encountered is a 'DUP' command, the program stops with `exit(0)`.
+
+The subsequent segment of the function focuses on responding to received commands using the `processCmd` function. Before processing, the function meticulously parses the received command, eliminating unnecessary spaces, removing '\\n', and converting tokens to uppercase. These refined tokens are then organized into an array and passed to `processCmd` for further handling.
